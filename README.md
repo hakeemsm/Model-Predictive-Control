@@ -1,5 +1,43 @@
 # CarND-Controls-MPC
-Simulated autonomous car
+
+## Executive Summary
+
+This repository contains my implementation for the MPC Project. In this project a vehicle [simulator](https://github.com/udacity/self-driving-car-sim/releases) navigates around a curved track in autonmous mode, transmitting telemetry and track  data via C++ websockets, constantly sending the steering angle and throttle back to the simulator to control the vehicle. 
+
+### Model
+
+The model is a kinematic bicycle model implemactuation commands. The error minimization is achieved using a 3rd degree polynomial fit for the x and y waypoints. The waypoints are calculated for the specified duration and intervals using the vehicle's x and y coordinates, orientation angle (psi), and velocity, the cross-track error (cte) and psi error (epsi). The model has to take into consideration a latency of 100ms for the actuator outputs to be transmitted to the simulator. State and actuation values from the previous timestep are combined to calculate the state for the current timestep as given in the equations below:
+
+### Equations
+
+```
+x[t+1] = x[t] + v[t] * cos(psi[t]) * dt
+y[t+1] = y[t] + v[t] * sin(psi[t]) * dt
+psi[t+1] = psi[t] + v[t]/L_f * delta[t] * dt
+v[t+!] = v[t] + a[t] *dt
+cte[t+!] = f(x[t]) - y[t] + (v[t] * sin(epsi[t])) * dt
+epsi[t+1] = psi[t] - psides[t] + ((v[t]/L_f) * delta[t] * dt)
+
+```
+* x, y : position of the car along the axes
+* psi - heading direction
+* v - velocity
+* cte - cross-track error
+* epsi - orientation error
+* L_f - distance from center of mass of the vehicle to front tires
+
+### Timestep Length and Elapsed Duration (N & dt)
+
+A range of values were tried for N and dt. With N at 20 and dt at 0.2, the vehicle was veering off track. 10/0.1 was reasonable but 10/0.05 had big errors. A lot of intermediate values were tried on but the behavior was very erratic. Finally the model was tuned using 15/0.15 and had a good performance.
+
+### Polynomial Fitting and MPC Preprocessing 
+
+The waypoints are obtained in the frame of the vehicle by transforming them to the vehicle's perspective. This transformation was done by shifting the origin to the current vehicle position and rotating to align the x-axis with heading direction. With the x and y coordinates at the origin fitting a 3rd degree polynomial to the waypoints was simplified. All this code can be found in main.cpp, lines 109-127
+
+### Model Predictive Control with Latency
+
+A couple approaches were used to account for latency - controlling the speed and updating the actuations for timesteps past the first (MPC.cpp Lines 104-107) so that the actuations are applied a timestep later.
+
 
 ---
 

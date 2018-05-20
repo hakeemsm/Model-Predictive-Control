@@ -6,8 +6,8 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-size_t N = 10;
-double dt = 0.05;
+size_t N = 15;
+double dt = 0.15;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -30,7 +30,7 @@ size_t cte_start = v_start + N;
 size_t epsi_start = cte_start + N;
 size_t delta_start = epsi_start + N;
 size_t a_start = delta_start + N - 1;
-double ref_v = 90; //ref velocity set to 70
+double ref_v = 90; //ref velocity set to 90
 
 class FG_eval {
  public:
@@ -47,22 +47,24 @@ class FG_eval {
     fg[0] = 0;
     
     //Cost function
-    for (unsigned int t = 0; t < N; t++) {
-      fg[0] += CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += CppAD::pow(vars[epsi_start + t], 2);
+    //NOTE: Added multiplier to smooth it out based on suggestions on slack
+    for (size_t t = 0; t < N; t++) {
+      fg[0] += 5000*CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += 4000*CppAD::pow(vars[epsi_start + t], 2);
       fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
     }
 
     //Minimize the use of actuators
-    for (unsigned int t = 0; t < N - 1; t++) {
-      fg[0] += CppAD::pow(vars[delta_start + t], 2);
-      fg[0] += CppAD::pow(vars[a_start + t], 2);
+    for (size_t t = 0; t < N - 1; t++) {
+      fg[0] += 25*CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += 25*CppAD::pow(vars[a_start + t], 2);
+      fg[0] += 500*CppAD::pow(vars[delta_start + t] * vars[v_start+t], 2);
     }
 
     // Minimize the value gap between sequential actuations.
-    for (unsigned int t = 0; t < N - 2; t++) {
-      fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += 500*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2); //tuned for a smoother steering across curves
+    for (size_t t = 0; t < N - 2; t++) {
+      fg[0] += 100*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 100*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2); //tuned for a smoother steering across curves
     }
 
     //Initialization & constraints
@@ -74,7 +76,7 @@ class FG_eval {
     fg[1 + epsi_start] = vars[epsi_start];
 
     
-    for (unsigned int t = 1; t < N; t++) {
+    for (size_t t = 1; t < N; t++) {
       
       //state at time t+!
       AD<double> x1 = vars[x_start + t];
@@ -97,7 +99,8 @@ class FG_eval {
       AD<double> a = vars[a_start + t - 1];
       AD<double> delta = vars[delta_start + t - 1];
       
-      //without this block the vehicle was jumping off the road. This if block posted on the mpc slack channel helped fix it
+      //To account for the actuation delays. 
+      //NOTE: This if block posted on the mpc slack channel helped fix it
       if (t > 1) {   
         a = vars[a_start + t - 2];
         delta = vars[delta_start + t - 2];
@@ -177,7 +180,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   }
 
   
-  for (unsigned int i = a_start; i < n_vars; i++) {
+  for (size_t i = a_start; i < n_vars; i++) {
     vars_lowerbound[i] = -1.0;
     vars_upperbound[i] = 1.0;
   }
@@ -186,7 +189,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   // Should be 0 besides initial state.
   Dvector constraints_lowerbound(n_constraints);
   Dvector constraints_upperbound(n_constraints);
-  for (unsigned int i = 0; i < n_constraints; i++) {
+  for (size_t i = 0; i < n_constraints; i++) {
     constraints_lowerbound[i] = 0;
     constraints_upperbound[i] = 0;
   }
@@ -251,7 +254,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   result.push_back(solution.x[delta_start]);
   result.push_back(solution.x[a_start]);
 
-  for (unsigned int i = 0; i < N-1; i++) {
+  for (size_t i = 0; i < N-1; i++) {
     result.push_back(solution.x[x_start + i + 1]);
     result.push_back(solution.x[y_start + i + 1]);
   }
