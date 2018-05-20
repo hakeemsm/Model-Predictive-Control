@@ -6,7 +6,7 @@ This repository contains my implementation for the MPC Project. In this project 
 
 ### Model
 
-The model is a kinematic bicycle model implemactuation commands. The error minimization is achieved using a 3rd degree polynomial fit for the x and y waypoints. The waypoints are calculated for the specified duration and intervals using the vehicle's x and y coordinates, orientation angle (psi), and velocity, the cross-track error (cte) and psi error (epsi). The model has to take into consideration a latency of 100ms for the actuator outputs to be transmitted to the simulator. State and actuation values from the previous timestep are combined to calculate the state for the current timestep as given in the equations below:
+The model is a kinematic bicycle model that ignores dynamic effects such as inertia, friction and torque. It calculates actuation commands based on previous timesteps. The error minimization is achieved using a 3rd degree polynomial fit for the x and y waypoints. The waypoints are calculated for the specified duration and intervals using the vehicle's x and y coordinates and heading direction (psi). The cross-track error (cte) and orientation error (epsi) are derived by applying the 3rd degree polynomial to the waypoints. The model has to take into consideration a latency of 100ms for the actuator outputs to be transmitted to the simulator. State and actuation values from the previous timestep are combined to calculate the state for the current timestep as given in the equations below:
 
 ### Equations
 
